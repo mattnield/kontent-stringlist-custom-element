@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>List Custom Element</title>
+  <!-- Kontent.ai Custom Elements API -->
+  <script src="https://app.kontent.ai/js-api/custom-element/v1/custom-element.min.js"></script>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="p-4 font-sans">
+  <!-- Modal warning dialog -->
+  <div id="warningModal"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center min-w-[280px]">
+      <div id="warningModalMessage" class="text-red-600 text-base mb-4 text-center"></div>
+      <button id="warningModalOk"
+        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">OK</button>
+    </div>
+  </div>
+  <!-- Input + Add button -->
+  <div id="controls" class="flex space-x-2 mb-4">
+    <input id="itemInput" type="text" placeholder="Enter a new item"
+      class="flex-grow border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    <button id="addBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+      Add
+    </button>
+  </div>
+
+  <!-- List -->
+  <ul id="list" class="space-y-2"></ul>
+
+  <script>
+    CustomElement.init((element, context) => {
+      const input = document.getElementById("itemInput");
+      const addBtn = document.getElementById("addBtn");
+      const listEl = document.getElementById("list");
+      const controls = document.getElementById("controls");
+      const warningModal = document.getElementById("warningModal");
+      const warningModalMsg = document.getElementById("warningModalMessage");
+      const warningModalOk = document.getElementById("warningModalOk");
+
+      // Parse saved value (JSON array of strings)
+      let items = [];
+      try {
+        items = element.value ? JSON.parse(element.value) : [];
+      } catch {
+        items = [];
+      }
+
+      const isDisabled = element.disabled === true;
+
+      // Parse regex pattern and warning message from config
+      let pattern = null;
+      let warningMessage = "";
+      try {
+        if (element.config && element.config.pattern) {
+          pattern = new RegExp(element.config.pattern);
+        }
+        if (element.config && element.config.warningMessage) {
+          warningMessage = element.config.warningMessage;
+        }
+      } catch {
+        pattern = null;
+        warningMessage = "";
+      }
+
+      function showWarning() {
+        if (warningMessage) {
+          warningModalMsg.textContent = warningMessage;
+          warningModal.classList.remove("opacity-0", "pointer-events-none");
+          warningModal.classList.add("opacity-100");
+        }
+      }
+
+      // Hide modal handler
+      warningModalOk.addEventListener("click", () => {
+        warningModal.classList.add("opacity-0", "pointer-events-none");
+        warningModal.classList.remove("opacity-100");
+      });
+
+      function render() {
+        listEl.innerHTML = "";
+        items.forEach((item, index) => {
+          const li = document.createElement("li");
+          li.className =
+            "flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg";
+
+          const span = document.createElement("span");
+          span.textContent = item;
+
+          li.appendChild(span);
+
+          if (!isDisabled) {
+            const btn = document.createElement("button");
+            btn.textContent = "Remove";
+            btn.className =
+              "ml-3 text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition";
+            btn.addEventListener("click", () => {
+              items.splice(index, 1);
+              save();
+              render();
+            });
+            li.appendChild(btn);
+          }
+
+          listEl.appendChild(li);
+        });
+
+        CustomElement.setHeight(document.body.scrollHeight);
+      }
+
+      function save() {
+        CustomElement.setValue(JSON.stringify(items));
+      }
+
+      if (!isDisabled) {
+        addBtn.addEventListener("click", () => {
+          const value = input.value.trim();
+          if (value) {
+            if (pattern && !pattern.test(value)) {
+              showWarning();
+              return;
+            }
+            items.push(value);
+            input.value = "";
+            save();
+            render();
+          }
+        });
+      } else {
+        controls.style.display = "none";
+      }
+
+      render();
+    });
+  </script>
+</body>
+
+</html>
